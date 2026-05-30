@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>TKD Districts Live Check-In</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+<style>
+:root{--navy:#15172f;--blue:#1c2547;--red:#e94560;--bg:#f3f5f8;--card:#fff;--line:#e5e7eb;--muted:#6b7280;--text:#111827;--green:#0f6e56;--softGreen:#e1f5ee;--softRed:#fcebeb;--softBlue:#e6f1fb;--softYellow:#faeeda}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text)}.app{max-width:430px;margin:0 auto;min-height:100vh;background:#f7f8fb}.header{position:sticky;top:0;z-index:10;background:var(--navy);color:#fff;padding:16px}.title{font-size:18px;font-weight:700}.sub{font-size:12px;opacity:.7;margin-top:4px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:6px}.dot.on{background:#22c55e}.tabs{display:flex;background:var(--blue)}.tab{flex:1;border:0;background:transparent;color:rgba(255,255,255,.55);padding:11px 4px;font-size:12px;border-bottom:3px solid transparent}.tab.active{color:#fff;border-bottom-color:var(--red)}.section{padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 1px rgba(0,0,0,.02)}.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;text-align:center}.num{font-size:25px;font-weight:800}.lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}input{width:100%;border:1px solid #d1d5db;background:#f9fafb;border-radius:11px;padding:12px;font-size:15px}input:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(233,69,96,.12)}.btn{width:100%;border:0;border-radius:11px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}.primary{background:var(--red);color:#fff}.secondary{background:#f9fafb;border:1px solid #d1d5db}.warn{background:var(--softYellow);color:#854f0b;border:1px solid #fac775}.danger{background:var(--softRed);color:#a32d2d;border:1px solid #f7c1c1}.upload{border:2px dashed #d1d5db;border-radius:15px;padding:18px;text-align:center;background:#f9fafb;cursor:pointer;margin-bottom:9px}.upload b{display:block;margin-bottom:4px}.help{font-size:12px;color:var(--muted);line-height:1.35;margin-top:6px}.alert{font-size:13px;border-radius:11px;padding:11px;margin:8px 0}.info{background:var(--softBlue);color:#185fa5;border:1px solid #b5d4f4}.success{background:#eaf3de;color:#3b6d11;border:1px solid #c0dd97}.error{background:var(--softRed);color:#a32d2d;border:1px solid #f7c1c1}.list{display:flex;flex-direction:column;gap:8px}.item{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px;cursor:pointer}.avatar{width:39px;height:39px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--navy);color:#fff;font-weight:800}.avatar.judge{background:var(--green)}.avatar.both{background:linear-gradient(135deg,var(--navy) 50%,var(--green) 50%)}.name{font-weight:750}.meta{font-size:12px;color:var(--muted);margin-top:2px}.badge{font-size:11px;border-radius:999px;padding:4px 8px;white-space:nowrap;font-weight:750}.pending{background:#f3f4f6;color:#6b7280}.checked{background:#eaf3de;color:#3b6d11}.pin{background:var(--softYellow);color:#854f0b}.judgeBadge{background:var(--softGreen);color:var(--green)}.modalWrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:flex-end;justify-content:center}.modalWrap.open{display:flex}.modal{width:100%;max-width:430px;background:#fff;border-radius:22px 22px 0 0;padding:16px 18px 38px;max-height:90vh;overflow:auto}.handle{width:38px;height:4px;border-radius:2px;background:#d1d5db;margin:0 auto 14px}.modalHead{display:flex;justify-content:space-between;gap:12px}.modalName{font-size:20px;font-weight:850}.modalSub{font-size:13px;color:var(--muted);margin-top:2px}.x{border:0;background:transparent;font-size:26px;color:#6b7280}.row{display:flex;justify-content:space-between;gap:15px;border-bottom:1px solid var(--line);padding:10px 0}.row span:first-child{font-size:13px;color:var(--muted)}.row span:last-child{font-weight:800;text-align:right}.ring{font-size:20px;color:var(--red)}.pinScreen{background:var(--navy);color:#fff;border-radius:16px;text-align:center;padding:21px 15px;margin:10px 0}.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:12px 0}.chip{border:1px solid rgba(255,255,255,.23);background:rgba(255,255,255,.12);padding:8px 12px;border-radius:10px;font-weight:800}.hidden{display:none!important}.adminRow{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:9px 0;gap:9px}.smallBtn{border:1px solid rgba(233,69,96,.45);background:#fff;color:var(--red);padding:5px 9px;border-radius:999px;font-weight:700}.file{display:none}.footerSpace{height:80px}</style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><div class="title">TKD Districts Live Check-In</div><div class="sub"><span id="dot" class="dot"></span><span id="liveStatus">Connecting to Firebase…</span></div></div>
+  <div class="tabs"><button class="tab active" id="tab-athletes" onclick="tab('athletes')">Athletes</button><button class="tab" id="tab-judges" onclick="tab('judges')">Judges</button><button class="tab" id="tab-map" onclick="tab('map')">Map</button><button class="tab" id="tab-admin" onclick="tab('admin')">Admin</button></div>
+
+  <main id="athletes" class="section">
+    <div class="grid" style="margin-bottom:12px"><div class="stat"><div id="total" class="num">0</div><div class="lbl">Competitors</div></div><div class="stat"><div id="checked" class="num">0</div><div class="lbl">Checked In</div></div><div class="stat"><div id="pins" class="num">0</div><div class="lbl">Pins</div></div><div class="stat"><div id="pending" class="num">0</div><div class="lbl">Pending</div></div></div>
+    <div id="noRoster" class="card"><div class="card-title">Roster Status</div><div class="alert info">No roster loaded yet. Unlock Admin and upload data once.</div></div>
+    <div id="athleteArea" class="hidden"><input id="athleteSearch" placeholder="Search name or ATA number…" oninput="renderAthletes()" style="margin-bottom:10px"><div id="athleteCount" class="help"></div><div id="athleteList" class="list"></div></div>
+  </main>
+
+  <main id="map" class="section hidden">
+    <div class="card">
+      <div class="card-title">Tournament Map</div>
+      <div id="mapBox" style="background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;text-align:center">
+        <div id="mapPlaceholder" style="padding:22px 16px;color:var(--muted)">
+          <div style="font-size:34px;margin-bottom:8px">🗺️</div>
+          <b>Map not added yet</b>
+          <div class="help">Admin can add a map image URL before publishing.</div>
+        </div>
+        <img id="mapImg" class="hidden" src="" alt="Tournament ring map" style="width:100%;height:auto;display:block">
+      </div>
+      <div class="help">Tip: use a clear image showing ring numbers, check-in, pin table, staging, restrooms, and awards.</div>
+    </div>
+  </main>
+
+  <main id="judges" class="section hidden">
+    <div class="card"><div class="card-title">Find Your Judge Assignment</div><input id="judgeSearch" placeholder="Search name or ATA number…" oninput="renderJudges()"></div>
+    <div id="judgeCount" class="help"></div><div id="judgeList" class="list"></div>
+    <div class="card"><div class="card-title">Walk-In Judge</div><input id="walkName" placeholder="Full name" style="margin-bottom:8px"><input id="walkSchool" placeholder="School / club" style="margin-bottom:8px"><input id="walkRing" placeholder="Preferred ring, optional" style="margin-bottom:10px"><button class="btn primary" onclick="registerWalkin()">Register Walk-In Judge</button><div id="walkMsg"></div></div>
+  </main>
+
+  <main id="admin" class="section hidden">
+    <div class="card" id="lockCard"><div class="card-title">Admin Access</div><div class="alert info">Uploads are only available after unlocking admin.</div><input id="adminPin" type="password" placeholder="Admin PIN" style="margin-bottom:10px"><button class="btn primary" onclick="unlockAdmin()">Unlock Admin</button><div class="help">Starter PIN: <b>2468</b>. This hides upload tools in the browser. True security comes from Firestore rules/auth next.</div></div>
+    <div id="adminTools" class="hidden">
+      <div class="card"><div class="card-title">Tournament Database</div><input id="tid" value="districts-2026" oninput="changeTournament(this.value)" style="margin-bottom:8px"><input id="tname" placeholder="Tournament name" oninput="saveTournamentName(this.value)"><div class="help">All phones using this Tournament ID share the same live check-in.</div></div>
+      <div class="card"><div class="card-title">Map Image</div><input id="mapUrl" placeholder="Paste map image URL here" oninput="saveMapUrl(this.value)"><div class="help">Upload your map image to GitHub, Canva, Firebase Storage, or another image host, then paste the direct image URL here.</div></div>
+      <div class="card"><div class="card-title">Upload Data</div><input class="file" type="file" id="compFile" accept=".xlsx,.xls,.csv" onchange="uploadCompetitors(event)"><input class="file" type="file" id="judgeFile" accept=".xlsx,.xls,.csv" onchange="uploadJudges(event)"><div class="upload" onclick="compFile.click()"><b>Upload / Replace Competitor Roster</b><span class="help">Writes to Firestore live database</span></div><div class="upload" onclick="judgeFile.click()"><b>Upload / Replace Judge Roster</b><span class="help">Writes to Firestore live database</span></div><div id="uploadMsg"></div></div>
+      <div class="card"><div class="card-title">Admin Actions</div><button class="btn secondary" onclick="exportStatus()" style="margin-bottom:8px">Export Check-In Status</button><button class="btn warn" onclick="resetCheckins()" style="margin-bottom:8px">Reset Check-Ins Only</button><button class="btn secondary" onclick="lockAdmin()">Lock Admin</button></div>
+      <div class="card"><div class="card-title">Find Checked-In Athlete</div><input id="adminSearch" placeholder="Search name or ATA to uncheck…" oninput="renderAdmin()" style="margin-bottom:10px"><div id="adminChecked"></div></div>
+      <div class="card"><div class="card-title">Walk-In Judges</div><div id="adminWalkins"></div></div>
+    </div>
+  </main>
+  <div class="footerSpace"></div>
+</div>
+
+<div class="modalWrap" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="handle"></div><div class="modalHead"><div><div id="modalName" class="modalName"></div><div id="modalSub" class="modalSub"></div></div><button class="x" onclick="closeModal()">×</button></div><div id="modalBody"></div></div></div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyBxXksGZlaonPGo2iIeJFy31dNlzGQ9Ze4",authDomain:"sedistricts.firebaseapp.com",databaseURL:"https://sedistricts-default-rtdb.firebaseio.com",projectId:"sedistricts",storageBucket:"sedistricts.firebasestorage.app",messagingSenderId:"82368811038",appId:"1:82368811038:web:1adf8236c205910b675e0f",measurementId:"G-BZKB8JVY01"};
+const ADMIN_PIN="2468";
+let db, tournamentId=localStorage.getItem('tkdTournamentId')||'districts-2026', comps=[], judges=[], walkins=[], admin=false;
+let unsub=[];
+const $=id=>document.getElementById(id);
+function init(){ $('tid').value=tournamentId; try{firebase.initializeApp(firebaseConfig); db=firebase.firestore(); listen();}catch(e){console.error(e); setLive(false,'Firebase error: '+e.message)} }
+function setLive(on,msg){$('dot').classList.toggle('on',on);$('liveStatus').textContent=msg}
+function ref(){return db.collection('tournaments').doc(tournamentId)}
+function tab(name){['athletes','judges','map','admin'].forEach(x=>{ $(x).classList.toggle('hidden',x!==name); $('tab-'+x).classList.toggle('active',x===name)}); if(name==='admin')renderAdmin()}
+function listen(){unsub.forEach(u=>u&&u());unsub=[]; if(!db)return; unsub.push(ref().onSnapshot(d=>{const data=d.data()||{};$('tname').value=data.name||''; if($('mapUrl')) $('mapUrl').value=data.mapUrl||''; applyMap(data.mapUrl||''); setLive(true,(data.name||tournamentId)+' · live')})); unsub.push(ref().collection('competitors').onSnapshot(s=>{comps=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('judges').onSnapshot(s=>{judges=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('walkins').onSnapshot(s=>{walkins=s.docs.map(d=>({...d.data(),id:d.id}));renderAll()}));}
+function sortName(a,b){return (a.last||'').localeCompare(b.last||'')||(a.first||'').localeCompare(b.first||'')}
+function merge(){const cByAta=new Map(comps.filter(c=>c.ata).map(c=>[c.ata,c])); comps.forEach(c=>delete c.judgeId); judges.forEach(j=>{const c=cByAta.get(j.ata); j.compId=c?c.id:null; if(c)c.judgeId=j.id})}
+function renderAll(){renderStats();renderAthletes();renderJudges();renderAdmin();$('noRoster').classList.toggle('hidden',comps.length>0);$('athleteArea').classList.toggle('hidden',comps.length===0)}
+function renderStats(){ $('total').textContent=comps.length; $('checked').textContent=comps.filter(c=>c.compCheckedIn).length; $('pins').textContent=comps.filter(c=>c.pinReceived).length; $('pending').textContent=comps.filter(c=>!c.compCheckedIn).length }
+function full(x){return ((x.first||'')+' '+(x.last||'')).trim()} function initals(x){return (((x.first||'')[0]||'')+((x.last||'')[0]||'')).toUpperCase()} function has(v){return v&&String(v).trim()&&String(v).trim()!=='0'}
+function renderAthletes(){let q=($('athleteSearch').value||'').toLowerCase().trim();let list=q?comps.filter(c=>[c.first,c.last,full(c),c.ata].some(v=>(v||'').toLowerCase().includes(q))):comps.slice(0,50);$('athleteCount').textContent=q?`${list.length} result${list.length!==1?'s':''}`:'Showing first 50 — search to find anyone';$('athleteList').innerHTML=list.length?list.map(c=>`<div class="item" onclick="openComp('${c.id}')"><div class="avatar ${c.judgeId?'both':''}">${initals(c)}</div><div style="flex:1;min-width:0"><div class="name">${full(c)}</div><div class="meta">${c.div||''}${c.ata?' · ATA '+c.ata:''}${c.judgeId?' · Also judging':''}</div></div><div><span class="badge ${c.compCheckedIn?'checked':'pending'}">${c.compCheckedIn?'✓ In':'Pending'}</span>${c.pinReceived?'<br><span class="badge pin" style="display:inline-block;margin-top:5px">Pin ✓</span>':''}</div></div>`).join(''):'<div class="alert info">No athletes found.</div>'}
+function renderJudges(){let q=($('judgeSearch').value||'').toLowerCase().trim();if(!q){$('judgeCount').textContent='';$('judgeList').innerHTML='';return}let jm=judges.filter(j=>[j.first,j.last,full(j),j.ata].some(v=>(v||'').toLowerCase().includes(q)));let wm=walkins.filter(w=>(w.name||'').toLowerCase().includes(q));$('judgeCount').textContent=`${jm.length+wm.length} result${jm.length+wm.length!==1?'s':''}`;$('judgeList').innerHTML=[...jm.map(j=>`<div class="item" onclick="openJudge('${j.id}')"><div class="avatar ${j.compId?'both':'judge'}">${initals(j)}</div><div style="flex:1"><div class="name">${full(j)}</div><div class="meta">${j.div||''}${j.compId?' · Also competing':''}</div></div><span class="badge ${j.judgeCheckedIn?'judgeBadge':'pending'}">${j.judgeCheckedIn?'✓ Judge In':'Pending'}</span></div>`),...wm.map(w=>`<div class="item"><div class="avatar judge">${(w.name||'?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div><div style="flex:1"><div class="name">${w.name}</div><div class="meta">Walk-in · ${w.ring||'No ring yet'}</div></div><span class="badge judgeBadge">Walk-in</span></div>`)].join('')||'<div class="alert info">No judges found.</div>'}
+function openComp(id){
+  let c=comps.find(x=>x.id===id), j=judges.find(x=>x.id===c?.judgeId);
+  if(!c)return;
+  $('modalName').textContent=full(c);
+  $('modalSub').textContent=(c.div||'')+' · ATA: '+(c.ata||'');
+  let ev=(c.events&&c.events.length?c.events:['your events']);
+  let html='<div class="card" style="margin-top:14px"><div class="card-title">Competitor Info</div>';
+
+  if(has(c.friRing)) html+=`<div class="row"><span>Friday Ring</span><span class="ring">Ring ${c.friRing}</span></div>`;
+  if(has(c.satRing)) html+=`<div class="row"><span>Saturday Ring</span><span class="ring">Ring ${c.satRing}</span></div>`;
+  if(!has(c.friRing)&&!has(c.satRing)) html+='<div class="alert info">No ring assignment on file.</div>';
+  html+=`<div class="row"><span>Events</span><span>${ev.join(', ')}</span></div>`;
+  html+=`<button class="btn secondary" style="margin:10px 0" onclick="closeModal();tab('map')">View Tournament Map</button>`;
+
+  if(!c.compCheckedIn){
+    html+=`<button class="btn primary" onclick="checkInComp('${c.id}')">Check In as Competitor</button>`;
+  }else if(!c.pinReceived){
+    html+=`<div class="pinScreen">
+      <div style="font-size:13px;opacity:.7;text-transform:uppercase;letter-spacing:1px">Checked In</div>
+      <div style="font-size:26px;font-weight:900;color:var(--red);margin-top:4px">GO TO PIN TABLE</div>
+      <div style="margin-top:10px;font-weight:800">Pins needed for:</div>
+      <div class="chips">${ev.map(e=>`<span class="chip">${e}</span>`).join('')}</div>
+      <div style="opacity:.75;font-size:13px">Keep this screen open. Show it to the counter person.</div>
+    </div>
+    <button class="btn primary" onclick="confirmPin('${c.id}')">Counter: Confirm Pins Received</button>`;
+  }else{
+    html+='<div class="alert success">Checked in · Pins received</div>';
+  }
+  html+='</div>';
+
+  if(j){
+    html+=`<div class="card"><div class="card-title">Judge Assignment</div>${j.friRings?.length?`<div class="row"><span>Friday</span><span>${j.friRings.join(', ')}</span></div>`:''}${j.satRings?.length?`<div class="row"><span>Saturday</span><span>${j.satRings.join(', ')}</span></div>`:''}${!j.judgeCheckedIn?`<button class="btn secondary" onclick="checkInJudge('${j.id}')">Check In as Judge</button>`:'<div class="alert success">Judge checked in</div>'}</div>`;
+  }
+  $('modalBody').innerHTML=html;
+  $('modal').classList.add('open');
+}
+function openJudge(id){let j=judges.find(x=>x.id===id);if(!j)return;$('modalName').textContent=full(j);$('modalSub').textContent=(j.div||'')+' · ATA: '+(j.ata||'');$('modalBody').innerHTML=`<div class="card" style="margin-top:14px"><div class="card-title">Judge Assignment</div>${j.friRings?.length?`<div class="row"><span>Friday</span><span>${j.friRings.join(', ')}</span></div>`:''}${j.satRings?.length?`<div class="row"><span>Saturday</span><span>${j.satRings.join(', ')}</span></div>`:''}${j.judgeCheckedIn?'<div class="alert success">Judge checked in</div>':`<button class="btn primary" onclick="checkInJudge('${j.id}')">Check In as Judge</button>`}${j.compId?'<div class="alert info">This judge is also competing. Use Athletes tab for competitor check-in.</div>':''}</div>`;$('modal').classList.add('open')}
+function closeModal(){$('modal').classList.remove('open')}
+async function checkInComp(id){
+  await ref().collection('competitors').doc(id).set({compCheckedIn:true,compCheckedInAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  const c=comps.find(x=>x.id===id);
+  if(c){
+    c.compCheckedIn=true;
+    c.compCheckedInAt=new Date();
+    openComp(id);
+  }
+}
+async function confirmPin(id){await ref().collection('competitors').doc(id).set({pinReceived:true,pinReceivedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});closeModal()}
+async function checkInJudge(id){await ref().collection('judges').doc(id).set({judgeCheckedIn:true,judgeCheckedInAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});closeModal()}
+function unlockAdmin(){if($('adminPin').value===ADMIN_PIN){admin=true;$('lockCard').classList.add('hidden');$('adminTools').classList.remove('hidden');renderAdmin()}else alert('Incorrect PIN')}
+function lockAdmin(){admin=false;$('adminPin').value='';$('lockCard').classList.remove('hidden');$('adminTools').classList.add('hidden')}
+function needAdmin(){if(!admin){alert('Unlock admin first');return false}return true}
+function changeTournament(v){tournamentId=(v||'districts-2026').trim();localStorage.setItem('tkdTournamentId',tournamentId);listen()}
+async function saveTournamentName(name){if(admin)await ref().set({name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
+async function saveMapUrl(mapUrl){if(admin)await ref().set({mapUrl,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); applyMap(mapUrl)}
+function applyMap(url){
+  if(!$('mapImg')) return;
+  const clean=(url||'').trim();
+  $('mapImg').src=clean;
+  $('mapImg').classList.toggle('hidden',!clean);
+  $('mapPlaceholder').classList.toggle('hidden',!!clean);
+}
+function docId(v,f){return String(v||f).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80)}
+function readWorkbook(file,cb){
+  try{
+    if(!window.XLSX){throw new Error('Excel reader did not load. Refresh the preview and try again.');}
+    let r=new FileReader();
+    r.onerror=()=>{throw new Error('Browser could not read the selected file.');};
+    r.onload=e=>{
+      try{
+        let wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        if(!wb.SheetNames || !wb.SheetNames.length){throw new Error('No sheets found in this file.');}
+        let preferred=['ROSTER','Roster','Sheet1','BB ADULTS','BB Adults'];
+        let sheetName=preferred.find(n=>wb.Sheets[n]) || wb.SheetNames[0];
+        let ws=wb.Sheets[sheetName];
+        let rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
+        if(!rows.length){throw new Error('The selected sheet appears to be empty: '+sheetName);}
+        cb(rows,sheetName);
+      }catch(err){
+        $('uploadMsg').innerHTML='<div class="alert error">Error reading file: '+err.message+'</div>';
+        console.error(err);
+      }
+    };
+    r.readAsArrayBuffer(file);
+  }catch(err){
+    $('uploadMsg').innerHTML='<div class="alert error">Error reading file: '+err.message+'</div>';
+    console.error(err);
+  }
+}
+function parseComp(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'c_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),divCode:String(r['DIV CODE']||'').trim(),friRing:String(r['FRI RING']||r['FRIDAY RING']||'').trim(),satRing:String(r['SAT RING']||r['SATURDAY RING']||'').trim(),events:['FORMS','WEAPONS','COMBAT','SPARRING','CF','CW','XF','XW'].filter(k=>String(r[k]||'').trim()),compCheckedIn:false,pinReceived:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(c=>c.first||c.last||c.ata)}
+function parseJudge(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'j_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),friRings:[r['FRI JUDGING RING'],r['FRI JUDGING RING.1'],r['FRI JUDGING RING.2']].map(x=>String(x||'').trim()).filter(x=>x&&x!=='0'),satRings:[r['SAT JUDGING RING'],r['SAT JUDGING RING.1'],r['SAT JUDGING RING.2']].map(x=>String(x||'').trim()).filter(x=>x&&x!=='0'),judgeCheckedIn:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(j=>j.first||j.last||j.ata)}
+async function commitInChunks(actions){
+  let batch=db.batch(), count=0;
+  for(const action of actions){
+    action(batch);
+    count++;
+    if(count>=450){await batch.commit(); batch=db.batch(); count=0;}
+  }
+  if(count) await batch.commit();
+}
+async function replaceCol(name,rows){
+  if(!db){throw new Error('Firebase is not connected.');}
+  let col=ref().collection(name);
+  let old=await col.get();
+  await commitInChunks(old.docs.map(d=>batch=>batch.delete(d.ref)));
+  await commitInChunks(rows.map(row=>batch=>{let id=row.docId,copy={...row};delete copy.docId;batch.set(col.doc(id),copy)}));
+  await ref().set({updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+}
+function uploadCompetitors(e){
+  if(!needAdmin())return;
+  let f=e.target.files[0]; if(!f)return;
+  $('uploadMsg').innerHTML='<div class="alert info">Reading competitor file…</div>';
+  readWorkbook(f,async (rows,sheetName)=>{
+    try{
+      let data=parseComp(rows);
+      if(!data.length){throw new Error('No competitors found. Check that your file has FIRST NAME, LAST NAME, and/or ATA columns.');}
+      $('uploadMsg').innerHTML='<div class="alert info">Uploading '+data.length+' competitors from '+sheetName+'…</div>';
+      await replaceCol('competitors',data);
+      $('uploadMsg').innerHTML=`<div class="alert success">${data.length} competitors uploaded live from ${sheetName}.</div>`;
+    }catch(err){
+      $('uploadMsg').innerHTML='<div class="alert error">Upload failed: '+err.message+'</div>';
+      console.error(err);
+    }
+  });
+}
+function uploadJudges(e){
+  if(!needAdmin())return;
+  let f=e.target.files[0]; if(!f)return;
+  $('uploadMsg').innerHTML='<div class="alert info">Reading judge file…</div>';
+  readWorkbook(f,async (rows,sheetName)=>{
+    try{
+      let data=parseJudge(rows);
+      if(!data.length){throw new Error('No judges found. Check that your file has FIRST NAME, LAST NAME, and/or ATA columns.');}
+      $('uploadMsg').innerHTML='<div class="alert info">Uploading '+data.length+' judges from '+sheetName+'…</div>';
+      await replaceCol('judges',data);
+      $('uploadMsg').innerHTML=`<div class="alert success">${data.length} judges uploaded live from ${sheetName}.</div>`;
+    }catch(err){
+      $('uploadMsg').innerHTML='<div class="alert error">Upload failed: '+err.message+'</div>';
+      console.error(err);
+    }
+  });
+}
+async function registerWalkin(){let name=$('walkName').value.trim(),school=$('walkSchool').value.trim(),ring=$('walkRing').value.trim();if(!name){$('walkMsg').innerHTML='<div class="alert error">Please enter a name.</div>';return}await ref().collection('walkins').add({name,school,ring,checkedIn:true,createdAt:firebase.firestore.FieldValue.serverTimestamp()});$('walkName').value='';$('walkSchool').value='';$('walkRing').value='';$('walkMsg').innerHTML=`<div class="alert success">${name} registered.</div>`}
+function renderAdmin(){
+  if(!$('adminChecked'))return;
+  let q=($('adminSearch')?.value||'').toLowerCase().trim();
+  let checkedList=comps.filter(c=>c.compCheckedIn||c.pinReceived);
+  if(q){
+    checkedList=checkedList.filter(c=>[c.first,c.last,full(c),c.ata].some(v=>(v||'').toLowerCase().includes(q)));
+  }
+  $('adminChecked').innerHTML=checkedList.map(c=>`<div class="adminRow">
+    <div style="flex:1;min-width:0">
+      <b>${full(c)}</b>
+      <div class="meta">${c.div||''}${c.ata?' · ATA '+c.ata:''}</div>
+      <div style="margin-top:5px">
+        ${c.compCheckedIn?'<span class="badge checked">Checked In</span>':'<span class="badge pending">Not Checked In</span>'}
+        ${c.pinReceived?'<span class="badge pin">Pins Confirmed</span>':'<span class="badge pending">Pins Pending</span>'}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+      ${c.pinReceived?`<button class="smallBtn" onclick="undoPin('${c.id}')">Undo Pin</button>`:''}
+      ${c.compCheckedIn?`<button class="smallBtn" onclick="undoComp('${c.id}')">Undo Check-In</button>`:''}
+    </div>
+  </div>`).join('') || (q?'<div class="help">No checked-in athletes match that search.</div>':'<div class="help">No one checked in yet.</div>');
+  $('adminWalkins').innerHTML=walkins.map(w=>`<div class="adminRow"><div><b>${w.name}</b><div class="meta">${w.school||''} ${w.ring?('· '+w.ring):''}</div></div><span class="badge judgeBadge">Walk-in</span></div>`).join('')||'<div class="help">No walk-ins yet.</div>'
+}
+async function undoComp(id){if(!needAdmin())return;await ref().collection('competitors').doc(id).set({compCheckedIn:false,pinReceived:false},{merge:true})}
+async function undoPin(id){if(!needAdmin())return;await ref().collection('competitors').doc(id).set({pinReceived:false},{merge:true})}
+async function resetCheckins(){if(!needAdmin()||!confirm('Reset all check-ins?'))return;let batch=db.batch();comps.forEach(c=>batch.set(ref().collection('competitors').doc(c.id),{compCheckedIn:false,pinReceived:false},{merge:true}));judges.forEach(j=>batch.set(ref().collection('judges').doc(j.id),{judgeCheckedIn:false},{merge:true}));await batch.commit()}
+function exportStatus(){let rows=comps.map(c=>({'First Name':c.first,'Last Name':c.last,ATA:c.ata,Division:c.div,'Fri Ring':c.friRing,'Sat Ring':c.satRing,Events:(c.events||[]).join(', '),'Checked In':c.compCheckedIn?'Yes':'No','Pin Received':c.pinReceived?'Yes':'No'}));let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Check-In Status');XLSX.writeFile(wb,'districts_checkin_status.xlsx')}
+init();
+</script>
+</body>
+</html>
