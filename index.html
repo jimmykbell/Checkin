@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>TKD Districts Live Check-In</title>
+<title>ATA Districts Live Check-In</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
@@ -18,8 +18,7 @@
       <div style="font-size:24px;font-weight:900;margin-bottom:6px">TKD Districts Check-In</div>
       <div class="help" style="margin-bottom:14px">Select the event you want to load. Everyone can choose an event; Admin is only needed to upload or manage data.</div>
       <button id="lastEventBtn" class="btn secondary hidden" onclick="loadLastEvent()" style="margin-bottom:8px">Continue Last Event</button>
-      <button class="btn primary" onclick="selectEvent('se-districts-2026','SE Districts 2026')" style="margin-bottom:8px">SE Districts 2026</button>
-      <button class="btn secondary" onclick="selectEvent('districts-test','Test Event')" style="margin-bottom:8px">Test Event</button>
+      <div id="publicEventList" style="margin-bottom:10px"><div class="help">Loading available events…</div></div>
       <button class="btn secondary" onclick="showCustomEvent()">Other / Custom Event ID</button>
       <div id="customEventBox" class="hidden" style="margin-top:12px">
         <input id="customEventId" placeholder="Enter event ID, e.g. districts-2026" style="margin-bottom:8px">
@@ -63,12 +62,13 @@
   <main id="admin" class="section hidden">
     <div class="card" id="lockCard"><div class="card-title">Admin Access</div><div class="alert info">The roster is already live for everyone. Admin is only for uploading/replacing data, resetting check-ins, and managing the map.</div><input id="adminPin" type="password" placeholder="Admin PIN" style="margin-bottom:10px"><button class="btn primary" onclick="unlockAdmin()">Unlock Admin</button><div class="help">Starter PIN: <b>2468</b>. Public users do not need this PIN to search or check in.</div></div>
     <div id="adminTools" class="hidden">
-      <div class="card"><div class="card-title">Upload Destination</div>
-        <div class="help" style="margin-bottom:8px">Choose which district/event Admin is uploading or managing.</div>
-        <button class="btn primary" onclick="adminSelectEvent('se-districts-2026','SE Districts 2026')" style="margin-bottom:8px">Upload to SE Districts 2026</button>
-        <button class="btn secondary" onclick="adminSelectEvent('districts-test','Test Event')" style="margin-bottom:8px">Upload to Test Event</button>
-        <input id="tid" value="se-districts-2026" placeholder="Custom event ID" oninput="changeTournament(this.value)" style="margin-bottom:8px">
-        <input id="tname" placeholder="Tournament name" oninput="saveTournamentName(this.value)">
+      <div class="card"><div class="card-title">Events</div>
+        <div class="help" style="margin-bottom:10px">Choose an existing event to update, or create a new event before uploading data.</div>
+        <div id="adminEventList" style="margin-bottom:12px"><div class="help">Loading events…</div></div>
+        <div class="card-title" style="margin-top:8px">Create / Update Event</div>
+        <input id="tid" value="" placeholder="Event ID, example: se-districts-2026" style="margin-bottom:8px">
+        <input id="tname" placeholder="Event name, example: SE Districts 2026" style="margin-bottom:8px">
+        <button class="btn primary" onclick="createOrUpdateEvent()" style="margin-bottom:8px">Create / Update Event</button>
         <div class="help">Current upload target: <b id="adminTargetLabel">None selected</b></div>
       </div>
       <div class="card"><div class="card-title">Map Image</div><input id="mapUrl" placeholder="Paste map image URL here" oninput="saveMapUrl(this.value)"><div class="help">Upload your map image to GitHub, Canva, Firebase Storage, or another image host, then paste the direct image URL here.</div></div>
@@ -87,13 +87,14 @@
 <script>
 const firebaseConfig={apiKey:"AIzaSyBxXksGZlaonPGo2iIeJFy31dNlzGQ9Ze4",authDomain:"sedistricts.firebaseapp.com",databaseURL:"https://sedistricts-default-rtdb.firebaseio.com",projectId:"sedistricts",storageBucket:"sedistricts.firebasestorage.app",messagingSenderId:"82368811038",appId:"1:82368811038:web:1adf8236c205910b675e0f",measurementId:"G-BZKB8JVY01"};
 const ADMIN_PIN="2468";
-let db, tournamentId=localStorage.getItem('tkdTournamentId')||'', currentEventName=localStorage.getItem('tkdTournamentName')||'', comps=[], judges=[], walkins=[], admin=false;
+let db, tournamentId=localStorage.getItem('tkdTournamentId')||'', currentEventName=localStorage.getItem('tkdTournamentName')||'', comps=[], judges=[], walkins=[], events=[], admin=false;
 let unsub=[];
 const $=id=>document.getElementById(id);
 function init(){
   try{
     firebase.initializeApp(firebaseConfig);
     db=firebase.firestore();
+    loadEvents();
     if(tournamentId){
       $('eventChooser').classList.add('hidden');
       $('mainApp').classList.remove('hidden');
@@ -125,8 +126,46 @@ function selectEvent(id,name){
   $('eventChooser').classList.add('hidden');
   $('mainApp').classList.remove('hidden');
   if($('tid')) $('tid').value=tournamentId;
+  if($('tname')) $('tname').value=currentEventName;
   if($('adminTargetLabel')) $('adminTargetLabel').textContent=currentEventName+' ('+tournamentId+')';
   listen();
+}
+async function loadEvents(){
+  if(!db)return;
+  try{
+    const snap=await db.collection('tournaments').get();
+    events=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||a.id).localeCompare(b.name||b.id));
+    renderEventList();
+  }catch(e){console.error(e)}
+}
+function renderEventList(){
+  if($('publicEventList')){
+    if(!events.length){
+      $('publicEventList').innerHTML='<div class="alert info">No events have been created yet. Admin must create an event first.</div>';
+    }else{
+      $('publicEventList').innerHTML=events.map(ev=>`<button class="btn ${ev.id===tournamentId?'primary':'secondary'}" onclick="selectEvent('${ev.id}','${(ev.name||ev.id).replace(/'/g,"\'")}')" style="margin-bottom:8px">${ev.name||ev.id}</button>`).join('');
+    }
+  }
+  if($('adminEventList')){
+    if(!events.length){$('adminEventList').innerHTML='<div class="help">No saved events found yet.</div>';return;}
+    $('adminEventList').innerHTML=events.map(ev=>`<div class="adminRow">
+      <div><b>${ev.name||ev.id}</b><div class="meta">${ev.id}</div></div>
+      <button class="smallBtn" onclick="selectEvent('${ev.id}','${(ev.name||ev.id).replace(/'/g,"\'")}');tab('admin')">Select</button>
+    </div>`).join('');
+  }
+}
+async function createOrUpdateEvent(){
+  if(!needAdmin())return;
+  const id=($('tid').value||'').trim();
+  const name=($('tname').value||id).trim();
+  if(!id){alert('Enter an Event ID.');return;}
+  tournamentId=id; currentEventName=name;
+  localStorage.setItem('tkdTournamentId',tournamentId);
+  localStorage.setItem('tkdTournamentName',currentEventName);
+  await ref().set({name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+  if($('adminTargetLabel')) $('adminTargetLabel').textContent=name+' ('+id+')';
+  listen();
+  await loadEvents();
 }
 function adminSelectEvent(id,name){
   selectEvent(id,name);
@@ -135,17 +174,18 @@ function adminSelectEvent(id,name){
 }
 function setLive(on,msg){$('dot').classList.toggle('on',on);$('liveStatus').textContent=msg; if($('debugStatus')) $('debugStatus').textContent='Project: sedistricts · Event: '+tournamentId+' · Competitors: '+comps.length+' · Judges: '+judges.length}
 function ref(){return db.collection('tournaments').doc(tournamentId)}
-function tab(name){['athletes','judges','map','admin'].forEach(x=>{ $(x).classList.toggle('hidden',x!==name); $('tab-'+x)?.classList.toggle('active',x===name)}); if(name==='admin')renderAdmin()}
+function tab(name){['athletes','judges','map','admin'].forEach(x=>{ $(x).classList.toggle('hidden',x!==name); $('tab-'+x)?.classList.toggle('active',x===name)}); if(name==='admin'){loadEvents();renderAdmin()}}
 function changeEventScreen(){
   unsub.forEach(u=>u&&u()); unsub=[];
   comps=[]; judges=[]; walkins=[];
   $('mainApp').classList.add('hidden');
   $('eventChooser').classList.remove('hidden');
+  loadEvents();
 }
-function listen(){unsub.forEach(u=>u&&u());unsub=[]; if(!db)return; setLive(false,'Loading live roster…'); unsub.push(ref().onSnapshot(d=>{const data=d.data()||{};$('tname').value=data.name||''; if($('mapUrl')) $('mapUrl').value=data.mapUrl||''; applyMap(data.mapUrl||''); setLive(true,(data.name||currentEventName||tournamentId)+' · live for everyone')})); unsub.push(ref().collection('competitors').onSnapshot(s=>{comps=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('judges').onSnapshot(s=>{judges=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('walkins').onSnapshot(s=>{walkins=s.docs.map(d=>({...d.data(),id:d.id}));renderAll()}));}
+function listen(){unsub.forEach(u=>u&&u());unsub=[]; if(!db)return; setLive(false,'Loading live roster…'); unsub.push(ref().onSnapshot(d=>{const data=d.data()||{}; if($('tname')) $('tname').value=data.name||currentEventName||''; if($('tid')) $('tid').value=tournamentId||''; if($('mapUrl')) $('mapUrl').value=data.mapUrl||''; applyMap(data.mapUrl||''); if(data.name){currentEventName=data.name; localStorage.setItem('tkdTournamentName',currentEventName)} if($('adminTargetLabel')) $('adminTargetLabel').textContent=(data.name||currentEventName||tournamentId)+' ('+tournamentId+')'; setLive(true,(data.name||currentEventName||tournamentId)+' · live for everyone')})); unsub.push(ref().collection('competitors').onSnapshot(s=>{comps=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('judges').onSnapshot(s=>{judges=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('walkins').onSnapshot(s=>{walkins=s.docs.map(d=>({...d.data(),id:d.id}));renderAll()}));}
 function sortName(a,b){return (a.last||'').localeCompare(b.last||'')||(a.first||'').localeCompare(b.first||'')}
 function merge(){const cByAta=new Map(comps.filter(c=>c.ata).map(c=>[c.ata,c])); comps.forEach(c=>delete c.judgeId); judges.forEach(j=>{const c=cByAta.get(j.ata); j.compId=c?c.id:null; if(c)c.judgeId=j.id})}
-function renderAll(){renderStats();renderAthletes();renderJudges();renderAdmin();$('noRoster').classList.toggle('hidden',comps.length>0);$('athleteArea').classList.toggle('hidden',comps.length===0)}
+function renderAll(){renderStats();renderAthletes();renderJudges();renderAdmin();renderEventList();$('noRoster').classList.toggle('hidden',comps.length>0);$('athleteArea').classList.toggle('hidden',comps.length===0)}
 function renderStats(){ $('total').textContent=comps.length; $('checked').textContent=comps.filter(c=>c.compCheckedIn).length; $('pins').textContent=comps.filter(c=>c.pinReceived).length; $('pending').textContent=comps.filter(c=>!c.compCheckedIn).length; if($('debugStatus')) $('debugStatus').textContent='Project: sedistricts · Event: '+tournamentId+' · Competitors: '+comps.length+' · Judges: '+judges.length }
 function full(x){return ((x.first||'')+' '+(x.last||'')).trim()} function initals(x){return (((x.first||'')[0]||'')+((x.last||'')[0]||'')).toUpperCase()} function has(v){return v&&String(v).trim()&&String(v).trim()!=='0'}
 function renderAthletes(){let q=($('athleteSearch').value||'').toLowerCase().trim();let list=q?comps.filter(c=>[c.first,c.last,full(c),c.ata].some(v=>(v||'').toLowerCase().includes(q))):comps.slice(0,50);$('athleteCount').textContent=q?`${list.length} result${list.length!==1?'s':''}`:'Showing first 50 — search to find anyone';$('athleteList').innerHTML=list.length?list.map(c=>`<div class="item" onclick="openComp('${c.id}')"><div class="avatar ${c.judgeId?'both':''}">${initals(c)}</div><div style="flex:1;min-width:0"><div class="name">${full(c)}</div><div class="meta">${c.div||''}${c.ata?' · ATA '+c.ata:''}${c.judgeId?' · Also judging':''}</div></div><div><span class="badge ${c.compCheckedIn?'checked':'pending'}">${c.compCheckedIn?'✓ In':'Pending'}</span>${c.pinReceived?'<br><span class="badge pin" style="display:inline-block;margin-top:5px">Pin ✓</span>':''}</div></div>`).join(''):'<div class="alert info">No athletes found.</div>'}
