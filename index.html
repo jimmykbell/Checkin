@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>ATA Districts Live Check-In</title>
+<title>TKD Districts Live Check-In</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
@@ -69,6 +69,7 @@
         <input id="tid" value="" placeholder="Event ID, example: se-districts-2026" style="margin-bottom:8px">
         <input id="tname" placeholder="Event name, example: SE Districts 2026" style="margin-bottom:8px">
         <button class="btn primary" onclick="createOrUpdateEvent()" style="margin-bottom:8px">Create / Update Event</button>
+        <button class="btn danger" onclick="deleteCurrentEvent()" style="margin-bottom:8px">Delete Current Event</button>
         <div class="help">Current upload target: <b id="adminTargetLabel">None selected</b></div>
       </div>
       <div class="card"><div class="card-title">Map Image</div><input id="mapUrl" placeholder="Paste map image URL here" oninput="saveMapUrl(this.value)"><div class="help">Upload your map image to GitHub, Canva, Firebase Storage, or another image host, then paste the direct image URL here.</div></div>
@@ -166,6 +167,38 @@ async function createOrUpdateEvent(){
   if($('adminTargetLabel')) $('adminTargetLabel').textContent=name+' ('+id+')';
   listen();
   await loadEvents();
+}
+async function deleteCollection(path){
+  const snap=await path.get();
+  if(snap.empty)return;
+  let batch=db.batch(), count=0;
+  for(const doc of snap.docs){
+    batch.delete(doc.ref);
+    count++;
+    if(count>=450){await batch.commit(); batch=db.batch(); count=0;}
+  }
+  if(count)await batch.commit();
+}
+async function deleteCurrentEvent(){
+  if(!needAdmin())return;
+  const id=($('tid').value||tournamentId||'').trim();
+  if(!id){alert('Select an event first.');return;}
+  const typed=prompt('Type DELETE to permanently delete event: '+id);
+  if(typed!=='DELETE')return;
+  const eventRef=db.collection('tournaments').doc(id);
+  await deleteCollection(eventRef.collection('competitors'));
+  await deleteCollection(eventRef.collection('judges'));
+  await deleteCollection(eventRef.collection('walkins'));
+  await eventRef.delete();
+  if(tournamentId===id){
+    localStorage.removeItem('tkdTournamentId');
+    localStorage.removeItem('tkdTournamentName');
+    tournamentId=''; currentEventName=''; comps=[]; judges=[]; walkins=[];
+  }
+  await loadEvents();
+  alert('Event deleted: '+id);
+  $('eventChooser').classList.remove('hidden');
+  $('mainApp').classList.add('hidden');
 }
 function adminSelectEvent(id,name){
   selectEvent(id,name);
