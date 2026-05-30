@@ -12,12 +12,30 @@
 </head>
 <body>
 <div class="app">
-  <div class="header"><div class="title">TKD Districts Live Check-In</div><div class="sub"><span id="dot" class="dot"></span><span id="liveStatus">Connecting to Firebase…</span></div></div>
-  <div class="tabs"><button class="tab active" id="tab-athletes" onclick="tab('athletes')">Athletes</button><button class="tab" id="tab-judges" onclick="tab('judges')">Judges</button><button class="tab" id="tab-map" onclick="tab('map')">Map</button><button class="tab" id="tab-admin" onclick="tab('admin')">Admin</button></div>
+  <div id="eventChooser" class="section" style="min-height:100vh;background:#f7f8fb;display:flex;align-items:center;justify-content:center">
+    <div class="card" style="width:100%;max-width:390px">
+      <div class="card-title">Choose District</div>
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">TKD Districts Check-In</div>
+      <div class="help" style="margin-bottom:14px">Select the event you want to load. Everyone can choose an event; Admin is only needed to upload or manage data.</div>
+      <button id="lastEventBtn" class="btn secondary hidden" onclick="loadLastEvent()" style="margin-bottom:8px">Continue Last Event</button>
+      <button class="btn primary" onclick="selectEvent('se-districts-2026','SE Districts 2026')" style="margin-bottom:8px">SE Districts 2026</button>
+      <button class="btn secondary" onclick="selectEvent('districts-test','Test Event')" style="margin-bottom:8px">Test Event</button>
+      <button class="btn secondary" onclick="showCustomEvent()">Other / Custom Event ID</button>
+      <div id="customEventBox" class="hidden" style="margin-top:12px">
+        <input id="customEventId" placeholder="Enter event ID, e.g. districts-2026" style="margin-bottom:8px">
+        <input id="customEventName" placeholder="Display name, optional" style="margin-bottom:8px">
+        <button class="btn primary" onclick="selectCustomEvent()">Load Event</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mainApp" class="hidden">
+  <div class="header"><div class="title">TKD Districts Live Check-In</div><div class="sub"><span id="dot" class="dot"></span><span id="liveStatus">Choose an event to load…</span></div><div class="sub" id="debugStatus" style="font-size:10px;opacity:.55;margin-top:2px">No event loaded</div></div>
+  <div class="tabs"><button class="tab active" id="tab-athletes" onclick="tab('athletes')">Athletes</button><button class="tab" id="tab-judges" onclick="tab('judges')">Judges</button><button class="tab" id="tab-map" onclick="tab('map')">Map</button><button class="tab" onclick="changeEventScreen()">Event</button><button class="tab" id="tab-admin" onclick="tab('admin')">Admin</button></div>
 
   <main id="athletes" class="section">
     <div class="grid" style="margin-bottom:12px"><div class="stat"><div id="total" class="num">0</div><div class="lbl">Competitors</div></div><div class="stat"><div id="checked" class="num">0</div><div class="lbl">Checked In</div></div><div class="stat"><div id="pins" class="num">0</div><div class="lbl">Pins</div></div><div class="stat"><div id="pending" class="num">0</div><div class="lbl">Pending</div></div></div>
-    <div id="noRoster" class="card"><div class="card-title">Roster Status</div><div class="alert info">No roster loaded yet. Unlock Admin and upload data once.</div></div>
+    <div id="noRoster" class="card"><div class="card-title">Live Roster</div><div class="alert info"><b>Loading live tournament roster…</b><br>If this does not change, the event admin has not uploaded the roster yet.</div></div>
     <div id="athleteArea" class="hidden"><input id="athleteSearch" placeholder="Search name or ATA number…" oninput="renderAthletes()" style="margin-bottom:10px"><div id="athleteCount" class="help"></div><div id="athleteList" class="list"></div></div>
   </main>
 
@@ -39,13 +57,20 @@
   <main id="judges" class="section hidden">
     <div class="card"><div class="card-title">Find Your Judge Assignment</div><input id="judgeSearch" placeholder="Search name or ATA number…" oninput="renderJudges()"></div>
     <div id="judgeCount" class="help"></div><div id="judgeList" class="list"></div>
-    <div class="card"><div class="card-title">Walk-In Judge</div><input id="walkName" placeholder="Full name" style="margin-bottom:8px"><input id="walkSchool" placeholder="School / club" style="margin-bottom:8px"><input id="walkRing" placeholder="Preferred ring, optional" style="margin-bottom:10px"><button class="btn primary" onclick="registerWalkin()">Register Walk-In Judge</button><div id="walkMsg"></div></div>
+    <div class="card"><div class="card-title">Walk-Up Judge</div><input id="walkName" placeholder="Judge name" style="margin-bottom:8px"><input id="walkAta" placeholder="ATA #" style="margin-bottom:8px"><select id="walkRank" style="width:100%;border:1px solid #d1d5db;background:#f9fafb;border-radius:11px;padding:12px;font-size:15px;margin-bottom:10px"><option value="">Select rank</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option></select><button class="btn primary" onclick="registerWalkin()">Register Walk-Up Judge</button><div id="walkMsg"></div></div>
   </main>
 
   <main id="admin" class="section hidden">
-    <div class="card" id="lockCard"><div class="card-title">Admin Access</div><div class="alert info">Uploads are only available after unlocking admin.</div><input id="adminPin" type="password" placeholder="Admin PIN" style="margin-bottom:10px"><button class="btn primary" onclick="unlockAdmin()">Unlock Admin</button><div class="help">Starter PIN: <b>2468</b>. This hides upload tools in the browser. True security comes from Firestore rules/auth next.</div></div>
+    <div class="card" id="lockCard"><div class="card-title">Admin Access</div><div class="alert info">The roster is already live for everyone. Admin is only for uploading/replacing data, resetting check-ins, and managing the map.</div><input id="adminPin" type="password" placeholder="Admin PIN" style="margin-bottom:10px"><button class="btn primary" onclick="unlockAdmin()">Unlock Admin</button><div class="help">Starter PIN: <b>2468</b>. Public users do not need this PIN to search or check in.</div></div>
     <div id="adminTools" class="hidden">
-      <div class="card"><div class="card-title">Tournament Database</div><input id="tid" value="districts-2026" oninput="changeTournament(this.value)" style="margin-bottom:8px"><input id="tname" placeholder="Tournament name" oninput="saveTournamentName(this.value)"><div class="help">All phones using this Tournament ID share the same live check-in.</div></div>
+      <div class="card"><div class="card-title">Upload Destination</div>
+        <div class="help" style="margin-bottom:8px">Choose which district/event Admin is uploading or managing.</div>
+        <button class="btn primary" onclick="adminSelectEvent('se-districts-2026','SE Districts 2026')" style="margin-bottom:8px">Upload to SE Districts 2026</button>
+        <button class="btn secondary" onclick="adminSelectEvent('districts-test','Test Event')" style="margin-bottom:8px">Upload to Test Event</button>
+        <input id="tid" value="se-districts-2026" placeholder="Custom event ID" oninput="changeTournament(this.value)" style="margin-bottom:8px">
+        <input id="tname" placeholder="Tournament name" oninput="saveTournamentName(this.value)">
+        <div class="help">Current upload target: <b id="adminTargetLabel">None selected</b></div>
+      </div>
       <div class="card"><div class="card-title">Map Image</div><input id="mapUrl" placeholder="Paste map image URL here" oninput="saveMapUrl(this.value)"><div class="help">Upload your map image to GitHub, Canva, Firebase Storage, or another image host, then paste the direct image URL here.</div></div>
       <div class="card"><div class="card-title">Upload Data</div><input class="file" type="file" id="compFile" accept=".xlsx,.xls,.csv" onchange="uploadCompetitors(event)"><input class="file" type="file" id="judgeFile" accept=".xlsx,.xls,.csv" onchange="uploadJudges(event)"><div class="upload" onclick="compFile.click()"><b>Upload / Replace Competitor Roster</b><span class="help">Writes to Firestore live database</span></div><div class="upload" onclick="judgeFile.click()"><b>Upload / Replace Judge Roster</b><span class="help">Writes to Firestore live database</span></div><div id="uploadMsg"></div></div>
       <div class="card"><div class="card-title">Admin Actions</div><button class="btn secondary" onclick="exportStatus()" style="margin-bottom:8px">Export Check-In Status</button><button class="btn warn" onclick="resetCheckins()" style="margin-bottom:8px">Reset Check-Ins Only</button><button class="btn secondary" onclick="lockAdmin()">Lock Admin</button></div>
@@ -54,6 +79,7 @@
     </div>
   </main>
   <div class="footerSpace"></div>
+  </div>
 </div>
 
 <div class="modalWrap" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="handle"></div><div class="modalHead"><div><div id="modalName" class="modalName"></div><div id="modalSub" class="modalSub"></div></div><button class="x" onclick="closeModal()">×</button></div><div id="modalBody"></div></div></div>
@@ -61,21 +87,69 @@
 <script>
 const firebaseConfig={apiKey:"AIzaSyBxXksGZlaonPGo2iIeJFy31dNlzGQ9Ze4",authDomain:"sedistricts.firebaseapp.com",databaseURL:"https://sedistricts-default-rtdb.firebaseio.com",projectId:"sedistricts",storageBucket:"sedistricts.firebasestorage.app",messagingSenderId:"82368811038",appId:"1:82368811038:web:1adf8236c205910b675e0f",measurementId:"G-BZKB8JVY01"};
 const ADMIN_PIN="2468";
-let db, tournamentId=localStorage.getItem('tkdTournamentId')||'districts-2026', comps=[], judges=[], walkins=[], admin=false;
+let db, tournamentId=localStorage.getItem('tkdTournamentId')||'', currentEventName=localStorage.getItem('tkdTournamentName')||'', comps=[], judges=[], walkins=[], admin=false;
 let unsub=[];
 const $=id=>document.getElementById(id);
-function init(){ $('tid').value=tournamentId; try{firebase.initializeApp(firebaseConfig); db=firebase.firestore(); listen();}catch(e){console.error(e); setLive(false,'Firebase error: '+e.message)} }
-function setLive(on,msg){$('dot').classList.toggle('on',on);$('liveStatus').textContent=msg}
+function init(){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.firestore();
+    if(tournamentId){
+      $('eventChooser').classList.add('hidden');
+      $('mainApp').classList.remove('hidden');
+      if($('tid')) $('tid').value=tournamentId;
+      if($('adminTargetLabel')) $('adminTargetLabel').textContent=(currentEventName||tournamentId)+' ('+tournamentId+')';
+      listen();
+    }else{
+      $('eventChooser').classList.remove('hidden');
+      $('mainApp').classList.add('hidden');
+    }
+  }catch(e){console.error(e); setLive(false,'Firebase error: '+e.message)}
+}
+function loadLastEvent(){
+  if(!tournamentId){return;}
+  selectEvent(tournamentId,currentEventName||tournamentId);
+}
+function showCustomEvent(){ $('customEventBox').classList.remove('hidden'); }
+function selectCustomEvent(){
+  const id=($('customEventId').value||'').trim();
+  const name=($('customEventName').value||id).trim();
+  if(!id){alert('Enter an event ID.');return;}
+  selectEvent(id,name);
+}
+function selectEvent(id,name){
+  tournamentId=id;
+  currentEventName=name||id;
+  localStorage.setItem('tkdTournamentId',tournamentId);
+  localStorage.setItem('tkdTournamentName',currentEventName);
+  $('eventChooser').classList.add('hidden');
+  $('mainApp').classList.remove('hidden');
+  if($('tid')) $('tid').value=tournamentId;
+  if($('adminTargetLabel')) $('adminTargetLabel').textContent=currentEventName+' ('+tournamentId+')';
+  listen();
+}
+function adminSelectEvent(id,name){
+  selectEvent(id,name);
+  tab('admin');
+  if(admin && $('tname') && !$('tname').value) saveTournamentName(name||id);
+}
+function setLive(on,msg){$('dot').classList.toggle('on',on);$('liveStatus').textContent=msg; if($('debugStatus')) $('debugStatus').textContent='Project: sedistricts · Event: '+tournamentId+' · Competitors: '+comps.length+' · Judges: '+judges.length}
 function ref(){return db.collection('tournaments').doc(tournamentId)}
-function tab(name){['athletes','judges','map','admin'].forEach(x=>{ $(x).classList.toggle('hidden',x!==name); $('tab-'+x).classList.toggle('active',x===name)}); if(name==='admin')renderAdmin()}
-function listen(){unsub.forEach(u=>u&&u());unsub=[]; if(!db)return; unsub.push(ref().onSnapshot(d=>{const data=d.data()||{};$('tname').value=data.name||''; if($('mapUrl')) $('mapUrl').value=data.mapUrl||''; applyMap(data.mapUrl||''); setLive(true,(data.name||tournamentId)+' · live')})); unsub.push(ref().collection('competitors').onSnapshot(s=>{comps=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('judges').onSnapshot(s=>{judges=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('walkins').onSnapshot(s=>{walkins=s.docs.map(d=>({...d.data(),id:d.id}));renderAll()}));}
+function tab(name){['athletes','judges','map','admin'].forEach(x=>{ $(x).classList.toggle('hidden',x!==name); $('tab-'+x)?.classList.toggle('active',x===name)}); if(name==='admin')renderAdmin()}
+function changeEventScreen(){
+  unsub.forEach(u=>u&&u()); unsub=[];
+  comps=[]; judges=[]; walkins=[];
+  $('mainApp').classList.add('hidden');
+  $('eventChooser').classList.remove('hidden');
+}
+function listen(){unsub.forEach(u=>u&&u());unsub=[]; if(!db)return; setLive(false,'Loading live roster…'); unsub.push(ref().onSnapshot(d=>{const data=d.data()||{};$('tname').value=data.name||''; if($('mapUrl')) $('mapUrl').value=data.mapUrl||''; applyMap(data.mapUrl||''); setLive(true,(data.name||currentEventName||tournamentId)+' · live for everyone')})); unsub.push(ref().collection('competitors').onSnapshot(s=>{comps=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('judges').onSnapshot(s=>{judges=s.docs.map(d=>({...d.data(),id:d.id})).sort(sortName); merge(); renderAll()})); unsub.push(ref().collection('walkins').onSnapshot(s=>{walkins=s.docs.map(d=>({...d.data(),id:d.id}));renderAll()}));}
 function sortName(a,b){return (a.last||'').localeCompare(b.last||'')||(a.first||'').localeCompare(b.first||'')}
 function merge(){const cByAta=new Map(comps.filter(c=>c.ata).map(c=>[c.ata,c])); comps.forEach(c=>delete c.judgeId); judges.forEach(j=>{const c=cByAta.get(j.ata); j.compId=c?c.id:null; if(c)c.judgeId=j.id})}
 function renderAll(){renderStats();renderAthletes();renderJudges();renderAdmin();$('noRoster').classList.toggle('hidden',comps.length>0);$('athleteArea').classList.toggle('hidden',comps.length===0)}
-function renderStats(){ $('total').textContent=comps.length; $('checked').textContent=comps.filter(c=>c.compCheckedIn).length; $('pins').textContent=comps.filter(c=>c.pinReceived).length; $('pending').textContent=comps.filter(c=>!c.compCheckedIn).length }
+function renderStats(){ $('total').textContent=comps.length; $('checked').textContent=comps.filter(c=>c.compCheckedIn).length; $('pins').textContent=comps.filter(c=>c.pinReceived).length; $('pending').textContent=comps.filter(c=>!c.compCheckedIn).length; if($('debugStatus')) $('debugStatus').textContent='Project: sedistricts · Event: '+tournamentId+' · Competitors: '+comps.length+' · Judges: '+judges.length }
 function full(x){return ((x.first||'')+' '+(x.last||'')).trim()} function initals(x){return (((x.first||'')[0]||'')+((x.last||'')[0]||'')).toUpperCase()} function has(v){return v&&String(v).trim()&&String(v).trim()!=='0'}
 function renderAthletes(){let q=($('athleteSearch').value||'').toLowerCase().trim();let list=q?comps.filter(c=>[c.first,c.last,full(c),c.ata].some(v=>(v||'').toLowerCase().includes(q))):comps.slice(0,50);$('athleteCount').textContent=q?`${list.length} result${list.length!==1?'s':''}`:'Showing first 50 — search to find anyone';$('athleteList').innerHTML=list.length?list.map(c=>`<div class="item" onclick="openComp('${c.id}')"><div class="avatar ${c.judgeId?'both':''}">${initals(c)}</div><div style="flex:1;min-width:0"><div class="name">${full(c)}</div><div class="meta">${c.div||''}${c.ata?' · ATA '+c.ata:''}${c.judgeId?' · Also judging':''}</div></div><div><span class="badge ${c.compCheckedIn?'checked':'pending'}">${c.compCheckedIn?'✓ In':'Pending'}</span>${c.pinReceived?'<br><span class="badge pin" style="display:inline-block;margin-top:5px">Pin ✓</span>':''}</div></div>`).join(''):'<div class="alert info">No athletes found.</div>'}
-function renderJudges(){let q=($('judgeSearch').value||'').toLowerCase().trim();if(!q){$('judgeCount').textContent='';$('judgeList').innerHTML='';return}let jm=judges.filter(j=>[j.first,j.last,full(j),j.ata].some(v=>(v||'').toLowerCase().includes(q)));let wm=walkins.filter(w=>(w.name||'').toLowerCase().includes(q));$('judgeCount').textContent=`${jm.length+wm.length} result${jm.length+wm.length!==1?'s':''}`;$('judgeList').innerHTML=[...jm.map(j=>`<div class="item" onclick="openJudge('${j.id}')"><div class="avatar ${j.compId?'both':'judge'}">${initals(j)}</div><div style="flex:1"><div class="name">${full(j)}</div><div class="meta">${j.div||''}${j.compId?' · Also competing':''}</div></div><span class="badge ${j.judgeCheckedIn?'judgeBadge':'pending'}">${j.judgeCheckedIn?'✓ Judge In':'Pending'}</span></div>`),...wm.map(w=>`<div class="item"><div class="avatar judge">${(w.name||'?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div><div style="flex:1"><div class="name">${w.name}</div><div class="meta">Walk-in · ${w.ring||'No ring yet'}</div></div><span class="badge judgeBadge">Walk-in</span></div>`)].join('')||'<div class="alert info">No judges found.</div>'}
+function renderJudges(){let q=($('judgeSearch').value||'').toLowerCase().trim();if(!q){$('judgeCount').textContent='';$('judgeList').innerHTML='';return}let jm=judges.filter(j=>[j.first,j.last,full(j),j.ata].some(v=>(v||'').toLowerCase().includes(q)));let wm=walkins.filter(w=>[(w.name||''),(w.ata||'')].some(v=>String(v).toLowerCase().includes(q)));$('judgeCount').textContent=`${jm.length+wm.length} result${jm.length+wm.length!==1?'s':''}`;$('judgeList').innerHTML=[...jm.map(j=>`<div class="item" onclick="openJudge('${j.id}')"><div class="avatar ${j.compId?'both':'judge'}">${initals(j)}</div><div style="flex:1"><div class="name">${full(j)}</div><div class="meta">${j.div||''}${j.compId?' · Also competing':''}</div></div><span class="badge ${j.judgeCheckedIn?'judgeBadge':'pending'}">${j.judgeCheckedIn?'✓ Judge In':'Pending'}</span></div>`),...wm.map(w=>`<div class="item"><div class="avatar judge">${(w.name||'?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div><div style="flex:1"><div class="name">${w.name}</div><div class="meta">Walk-up · ATA #${w.ata||''} · Rank ${w.rank||''}</div></div><span class="badge judgeBadge">Walk-up</span></div>`)].join('')||'<div class="alert info">No judges found.</div>'}
 function openComp(id){
   let c=comps.find(x=>x.id===id), j=judges.find(x=>x.id===c?.judgeId);
   if(!c)return;
@@ -128,7 +202,7 @@ async function checkInJudge(id){await ref().collection('judges').doc(id).set({ju
 function unlockAdmin(){if($('adminPin').value===ADMIN_PIN){admin=true;$('lockCard').classList.add('hidden');$('adminTools').classList.remove('hidden');renderAdmin()}else alert('Incorrect PIN')}
 function lockAdmin(){admin=false;$('adminPin').value='';$('lockCard').classList.remove('hidden');$('adminTools').classList.add('hidden')}
 function needAdmin(){if(!admin){alert('Unlock admin first');return false}return true}
-function changeTournament(v){tournamentId=(v||'districts-2026').trim();localStorage.setItem('tkdTournamentId',tournamentId);listen()}
+function changeTournament(v){tournamentId=(v||'se-districts-2026').trim();currentEventName=tournamentId;localStorage.setItem('tkdTournamentId',tournamentId);localStorage.setItem('tkdTournamentName',currentEventName); if($('adminTargetLabel')) $('adminTargetLabel').textContent=currentEventName+' ('+tournamentId+')'; listen(); setLive(false,'Switching event…')}
 async function saveTournamentName(name){if(admin)await ref().set({name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
 async function saveMapUrl(mapUrl){if(admin)await ref().set({mapUrl,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}); applyMap(mapUrl)}
 function applyMap(url){
@@ -218,7 +292,20 @@ function uploadJudges(e){
     }
   });
 }
-async function registerWalkin(){let name=$('walkName').value.trim(),school=$('walkSchool').value.trim(),ring=$('walkRing').value.trim();if(!name){$('walkMsg').innerHTML='<div class="alert error">Please enter a name.</div>';return}await ref().collection('walkins').add({name,school,ring,checkedIn:true,createdAt:firebase.firestore.FieldValue.serverTimestamp()});$('walkName').value='';$('walkSchool').value='';$('walkRing').value='';$('walkMsg').innerHTML=`<div class="alert success">${name} registered.</div>`}
+async function registerWalkin(){
+  let name=$('walkName').value.trim();
+  let ata=$('walkAta').value.trim();
+  let rank=$('walkRank').value;
+  if(!name){$('walkMsg').innerHTML='<div class="alert error">Please enter the judge name.</div>';return}
+  if(!ata){$('walkMsg').innerHTML='<div class="alert error">ATA # is required.</div>';return}
+  if(!rank){$('walkMsg').innerHTML='<div class="alert error">Please select rank 1–9.</div>';return}
+  const duplicateRoster=judges.some(j=>String(j.ata||'').trim()===ata);
+  const duplicateWalkin=walkins.some(w=>String(w.ata||'').trim()===ata);
+  if(duplicateRoster||duplicateWalkin){$('walkMsg').innerHTML=`<div class="alert error">ATA #${ata} is already registered.</div>`;return}
+  await ref().collection('walkins').add({name,ata,rank:Number(rank),checkedIn:true,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  $('walkName').value='';$('walkAta').value='';$('walkRank').value='';
+  $('walkMsg').innerHTML=`<div class="alert success">✓ Walk-Up Judge Registered<br><b>${name}</b><br>ATA #${ata}<br>Rank ${rank}</div>`;
+}
 function renderAdmin(){
   if(!$('adminChecked'))return;
   let q=($('adminSearch')?.value||'').toLowerCase().trim();
@@ -240,7 +327,7 @@ function renderAdmin(){
       ${c.compCheckedIn?`<button class="smallBtn" onclick="undoComp('${c.id}')">Undo Check-In</button>`:''}
     </div>
   </div>`).join('') || (q?'<div class="help">No checked-in athletes match that search.</div>':'<div class="help">No one checked in yet.</div>');
-  $('adminWalkins').innerHTML=walkins.map(w=>`<div class="adminRow"><div><b>${w.name}</b><div class="meta">${w.school||''} ${w.ring?('· '+w.ring):''}</div></div><span class="badge judgeBadge">Walk-in</span></div>`).join('')||'<div class="help">No walk-ins yet.</div>'
+  $('adminWalkins').innerHTML=walkins.map(w=>`<div class="adminRow"><div><b>${w.name}</b><div class="meta">ATA #${w.ata||''} · Rank ${w.rank||''}</div></div><span class="badge judgeBadge">Walk-up</span></div>`).join('')||'<div class="help">No walk-up judges yet.</div>'
 }
 async function undoComp(id){if(!needAdmin())return;await ref().collection('competitors').doc(id).set({compCheckedIn:false,pinReceived:false},{merge:true})}
 async function undoPin(id){if(!needAdmin())return;await ref().collection('competitors').doc(id).set({pinReceived:false},{merge:true})}
