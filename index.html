@@ -30,7 +30,7 @@
 
   <div id="mainApp" class="hidden">
   <div class="header"><div class="title">TKD Districts Live Check-In</div><div class="sub"><span id="dot" class="dot"></span><span id="liveStatus">Choose an event to load…</span></div><div class="sub" id="debugStatus" style="font-size:10px;opacity:.55;margin-top:2px">No event loaded</div></div>
-  <div class="tabs"><button class="tab active" id="tab-athletes" onclick="tab('athletes')">Athletes</button><button class="tab" id="tab-judges" onclick="tab('judges')">Judges</button><button class="tab" id="tab-map" onclick="tab('map')">Map</button><button class="tab" onclick="changeEventScreen()">Event</button><button class="tab" id="tab-admin" onclick="tab('admin')">Admin</button></div>
+  <div class="tabs"><button class="tab active" id="tab-athletes" onclick="tab('athletes')">Athletes</button><button class="tab" id="tab-map" onclick="tab('map')">Map</button><button class="tab" onclick="changeEventScreen()">Event</button><button class="tab" id="tab-admin" onclick="tab('admin')">Admin</button></div>
 
   <main id="athletes" class="section">
     <div class="grid" style="margin-bottom:12px"><div class="stat"><div id="total" class="num">0</div><div class="lbl">Competitors</div></div><div class="stat"><div id="checked" class="num">0</div><div class="lbl">Checked In</div></div><div class="stat"><div id="pins" class="num">0</div><div class="lbl">Pins</div></div><div class="stat"><div id="pending" class="num">0</div><div class="lbl">Pending</div></div></div>
@@ -221,6 +221,24 @@ function merge(){const cByAta=new Map(comps.filter(c=>c.ata).map(c=>[c.ata,c]));
 function renderAll(){renderStats();renderAthletes();renderJudges();renderAdmin();renderEventList();$('noRoster').classList.toggle('hidden',comps.length>0);$('athleteArea').classList.toggle('hidden',comps.length===0)}
 function renderStats(){ $('total').textContent=comps.length; $('checked').textContent=comps.filter(c=>c.compCheckedIn).length; $('pins').textContent=comps.filter(c=>c.pinReceived).length; $('pending').textContent=comps.filter(c=>!c.compCheckedIn).length; if($('debugStatus')) $('debugStatus').textContent='Project: sedistricts · Event: '+tournamentId+' · Competitors: '+comps.length+' · Judges: '+judges.length }
 function full(x){return ((x.first||'')+' '+(x.last||'')).trim()} function initals(x){return (((x.first||'')[0]||'')+((x.last||'')[0]||'')).toUpperCase()} function has(v){return v&&String(v).trim()&&String(v).trim()!=='0'}
+function cleanText(v){return String(v||'').trim()}
+function isSignInBy(v){return /^sign\s*in\s*by\b/i.test(cleanText(v))}
+function formatSignInBy(v){
+  let s=cleanText(v).replace(/\s+/g,' ');
+  if(!s)return '';
+  return s.replace(/^sign\s*in\s*by/i,'Sign in by');
+}
+function assignmentHtml(label,round,ring){
+  const roundText=cleanText(round);
+  const ringText=cleanText(ring);
+  if(has(ringText)){
+    return `<div class="row"><span>${label} Assignment</span><span class="ring">Ring ${ringText} • Round ${roundText || 'TBA'}</span></div>`;
+  }
+  if(isSignInBy(roundText)){
+    return `<div class="alert warn"><b>${label} Assignment</b><br><span style="font-size:17px;font-weight:900">SEE JUDGE'S TABLE FOR COMPETITION RING</span><br><span style="display:block;margin-top:5px;font-weight:800">${formatSignInBy(roundText)}</span></div>`;
+  }
+  return '';
+}
 function renderAthletes(){let q=($('athleteSearch').value||'').toLowerCase().trim();let list=q?comps.filter(c=>[c.first,c.last,full(c),c.ata].some(v=>(v||'').toLowerCase().includes(q))):comps.slice(0,50);$('athleteCount').textContent=q?`${list.length} result${list.length!==1?'s':''}`:'Showing first 50 — search to find anyone';$('athleteList').innerHTML=list.length?list.map(c=>`<div class="item" onclick="openComp('${c.id}')"><div class="avatar ${c.judgeId?'both':''}">${initals(c)}</div><div style="flex:1;min-width:0"><div class="name">${full(c)}</div><div class="meta">${c.div||''}${c.ata?' · ATA '+c.ata:''}${c.judgeId?' · Also judging':''}</div></div><div><span class="badge ${c.compCheckedIn?'checked':'pending'}">${c.compCheckedIn?'✓ In':'Pending'}</span>${c.pinReceived?'<br><span class="badge pin" style="display:inline-block;margin-top:5px">Pin ✓</span>':''}</div></div>`).join(''):'<div class="alert info">No athletes found.</div>'}
 function renderJudges(){let q=($('judgeSearch').value||'').toLowerCase().trim();if(!q){$('judgeCount').textContent='';$('judgeList').innerHTML='';return}let jm=judges.filter(j=>[j.first,j.last,full(j),j.ata].some(v=>(v||'').toLowerCase().includes(q)));let wm=walkins.filter(w=>[(w.name||''),(w.ata||'')].some(v=>String(v).toLowerCase().includes(q)));$('judgeCount').textContent=`${jm.length+wm.length} result${jm.length+wm.length!==1?'s':''}`;$('judgeList').innerHTML=[...jm.map(j=>`<div class="item" onclick="openJudge('${j.id}')"><div class="avatar ${j.compId?'both':'judge'}">${initals(j)}</div><div style="flex:1"><div class="name">${full(j)}</div><div class="meta">${j.div||''}${j.compId?' · Also competing':''}</div></div><span class="badge ${j.judgeCheckedIn?'judgeBadge':'pending'}">${j.judgeCheckedIn?'✓ Judge In':'Pending'}</span></div>`),...wm.map(w=>`<div class="item"><div class="avatar judge">${(w.name||'?').split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div><div style="flex:1"><div class="name">${w.name}</div><div class="meta">Walk-up · ATA #${w.ata||''} · Rank ${w.rank||''}</div></div><span class="badge judgeBadge">Walk-up</span></div>`)].join('')||'<div class="alert info">No judges found.</div>'}
 function openComp(id){
@@ -231,9 +249,11 @@ function openComp(id){
   let ev=(c.events&&c.events.length?c.events:['your events']);
   let html='<div class="card" style="margin-top:14px"><div class="card-title">Competitor Info</div>';
 
-  if(has(c.friRing)) html+=`<div class="row"><span>Friday Assignment</span><span class="ring">Ring ${c.friRing} • Round ${c.friRound || 'TBA'}</span></div>`;
-  if(has(c.satRing)) html+=`<div class="row"><span>Saturday Assignment</span><span class="ring">Ring ${c.satRing} • Round ${c.satRound || 'TBA'}</span></div>`;
-  if(!has(c.friRing)&&!has(c.satRing)) html+='<div class="alert info">No ring assignment on file.</div>';
+  const friAssignment=assignmentHtml('Friday',c.friRound,c.friRing);
+  const satAssignment=assignmentHtml('Saturday',c.satRound,c.satRing);
+  html+=friAssignment;
+  html+=satAssignment;
+  if(!friAssignment&&!satAssignment) html+='<div class="alert info">No ring assignment on file.</div>';
   html+=`<div class="row"><span>Events</span><span>${ev.join(', ')}</span></div>`;
   html+=`<button class="btn secondary" style="margin:10px 0" onclick="closeModal();tab('map')">View Tournament Map</button>`;
 
@@ -312,7 +332,72 @@ function readWorkbook(file,cb){
     console.error(err);
   }
 }
-function parseComp(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'c_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),divCode:String(r['DIV CODE']||'').trim(),friRing:String(r['FRI RING']||r['FRIDAY RING']||'').trim(),satRing:String(r['SAT RING']||r['SATURDAY RING']||'').trim(),friRound:String(r['FRI ROUND']||r['FRIDAY ROUND']||'').trim(),satRound:String(r['SAT ROUND']||r['SATURDAY ROUND']||'').trim(),events:['FORMS','WEAPONS','COMBAT','SPARRING','CF','CW','XF','XW'].filter(k=>String(r[k]||'').trim()),compCheckedIn:false,pinReceived:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(c=>c.first||c.last||c.ata)}
+function normKey(v){
+  return String(v||'').replace(/\s+/g,' ').replace(/[#:]/g,'').trim().toLowerCase();
+}
+function getVal(r,names){
+  const wanted=names.map(normKey);
+  for(const key of Object.keys(r)){
+    if(wanted.includes(normKey(key)) && r[key]!==undefined && r[key]!==null && String(r[key]).trim()!==''){
+      return String(r[key]).trim();
+    }
+  }
+  return '';
+}
+function pick(r,names){return getVal(r,names)}
+function eventPicked(v){
+  const s=String(v||'').trim().toLowerCase();
+  return s && s!=='0' && s!=='no' && s!=='false' && s!=='n' && s!=='nan';
+}
+function parseEventText(txt){
+  const s=String(txt||'').toLowerCase();
+  let out=[];
+  if(/forms?/.test(s) && !/creative forms?|xtreme forms?|extreme forms?/.test(s.replace(/creative forms?/g,'').replace(/xtreme forms?/g,'').replace(/extreme forms?/g,''))) out.push('FORMS');
+  if(/weapons?/.test(s) && !/combat weapons?|creative weapons?|xtreme weapons?|extreme weapons?/.test(s.replace(/combat weapons?/g,'').replace(/creative weapons?/g,'').replace(/xtreme weapons?/g,'').replace(/extreme weapons?/g,''))) out.push('WEAPONS');
+  if(/combat/.test(s)) out.push('COMBAT');
+  if(/sparring/.test(s)) out.push('SPARRING');
+  if(/creative forms?/.test(s)) out.push('CREATIVE FORMS');
+  if(/creative weapons?/.test(s)) out.push('CREATIVE WEAPONS');
+  if(/(xtreme|extreme) forms?/.test(s)) out.push('XTREME FORMS');
+  if(/(xtreme|extreme) weapons?/.test(s)) out.push('XTREME WEAPONS');
+  return [...new Set(out)];
+}
+function parseComp(rows){
+  return rows.map((r,i)=>{
+    let first=pick(r,['FIRST NAME','First Name','First','FIRST']);
+    let last=pick(r,['LAST NAME','Last Name','Last','LAST']);
+    let ata=pick(r,['ATA#','ATA #','ATA','ATA NUMBER','ATA Number']);
+    let friRound=pick(r,['FRI ROUND','FRIDAY ROUND','Fri Round','Friday Round']);
+    let friRing=pick(r,['FRI RING','FRIDAY RING','Fri Ring','Friday Ring']);
+    let satRound=pick(r,['SAT ROUND','SATURDAY ROUND','Sat Round','Saturday Round']);
+    let satRing=pick(r,['SAT RING','SATURDAY RING','Sat Ring','Saturday Ring']);
+    let events=[];
+    [
+      ['FORMS',['FORMS','Forms']],
+      ['WEAPONS',['WEAPONS','Weapons']],
+      ['COMBAT',['COMBAT','Combat Weapons','Combat']],
+      ['SPARRING',['SPARRING','Sparring']],
+      ['CREATIVE FORMS',['CF','C Forms','Creative Forms']],
+      ['CREATIVE WEAPONS',['CW','C Weapons','Creative Weapons']],
+      ['XTREME FORMS',['XF','X Forms','Xtreme Forms','Extreme Forms']],
+      ['XTREME WEAPONS',['XW','X Weapons','Xtreme Weapons','Extreme Weapons']]
+    ].forEach(([label,names])=>{ if(names.some(n=>eventPicked(pick(r,[n])))) events.push(label); });
+    if(!events.length){
+      events=parseEventText(pick(r,['Events Entered Text','Events','Event Text']));
+    }
+    return{
+      docId:docId(ata||last+'_'+first+'_'+i,'c_'+i),
+      first,last,ata,
+      div:pick(r,['DIVISION','Division','Division Name']),
+      divCode:pick(r,['DIV CODE','Div Code','TRAD Ring Group Key','CX Ring Group Key']),
+      friRing,friRound,satRing,satRound,
+      events,
+      compCheckedIn:false,
+      pinReceived:false,
+      uploadedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+  }).filter(c=>c.first||c.last||c.ata)
+}
 function parseJudge(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'j_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),friRings:[r['FRI JUDGING RING'],r['FRI JUDGING RING.1'],r['FRI JUDGING RING.2']].map(x=>String(x||'').trim()).filter(x=>x&&x!=='0'),satRings:[r['SAT JUDGING RING'],r['SAT JUDGING RING.1'],r['SAT JUDGING RING.2']].map(x=>String(x||'').trim()).filter(x=>x&&x!=='0'),judgeCheckedIn:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(j=>j.first||j.last||j.ata)}
 async function commitInChunks(actions){
   let batch=db.batch(), count=0;
