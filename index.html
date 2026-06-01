@@ -231,8 +231,8 @@ function openComp(id){
   let ev=(c.events&&c.events.length?c.events:['your events']);
   let html='<div class="card" style="margin-top:14px"><div class="card-title">Competitor Info</div>';
 
-  if(has(c.friRing)) html+=`<div class="row"><span>Friday Ring</span><span class="ring">Ring ${c.friRing}</span></div>`;
-  if(has(c.satRing)) html+=`<div class="row"><span>Saturday Ring</span><span class="ring">Ring ${c.satRing}</span></div>`;
+  if(has(c.friRing)) html+=`<div class="row"><span>Friday Assignment</span><span class="ring">Ring ${c.friRing} • Round ${c.friRound || 'TBA'}</span></div>`;
+  if(has(c.satRing)) html+=`<div class="row"><span>Saturday Assignment</span><span class="ring">Ring ${c.satRing} • Round ${c.satRound || 'TBA'}</span></div>`;
   if(!has(c.friRing)&&!has(c.satRing)) html+='<div class="alert info">No ring assignment on file.</div>';
   html+=`<div class="row"><span>Events</span><span>${ev.join(', ')}</span></div>`;
   html+=`<button class="btn secondary" style="margin:10px 0" onclick="closeModal();tab('map')">View Tournament Map</button>`;
@@ -312,7 +312,7 @@ function readWorkbook(file,cb){
     console.error(err);
   }
 }
-function parseComp(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'c_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),divCode:String(r['DIV CODE']||'').trim(),friRing:String(r['FRI RING']||r['FRIDAY RING']||'').trim(),satRing:String(r['SAT RING']||r['SATURDAY RING']||'').trim(),events:['FORMS','WEAPONS','COMBAT','SPARRING','CF','CW','XF','XW'].filter(k=>String(r[k]||'').trim()),compCheckedIn:false,pinReceived:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(c=>c.first||c.last||c.ata)}
+function parseComp(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'c_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),divCode:String(r['DIV CODE']||'').trim(),friRing:String(r['FRI RING']||r['FRIDAY RING']||'').trim(),satRing:String(r['SAT RING']||r['SATURDAY RING']||'').trim(),friRound:String(r['FRI ROUND']||r['FRIDAY ROUND']||'').trim(),satRound:String(r['SAT ROUND']||r['SATURDAY ROUND']||'').trim(),events:['FORMS','WEAPONS','COMBAT','SPARRING','CF','CW','XF','XW'].filter(k=>String(r[k]||'').trim()),compCheckedIn:false,pinReceived:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(c=>c.first||c.last||c.ata)}
 function parseJudge(rows){return rows.map((r,i)=>{let first=String(r['FIRST NAME']||r['First Name']||r.FIRST||'').trim(),last=String(r['LAST NAME']||r['Last Name']||r.LAST||'').trim(),ata=String(r.ATA||r['ATA NUMBER']||'').trim();return{docId:docId(ata||last+'_'+first+'_'+i,'j_'+i),first,last,ata,div:String(r.DIVISION||'').trim(),friRings:[r['FRI JUDGING RING'],r['FRI JUDGING RING.1'],r['FRI JUDGING RING.2']].map(x=>String(x||'').trim()).filter(x=>x&&x!=='0'),satRings:[r['SAT JUDGING RING'],r['SAT JUDGING RING.1'],r['SAT JUDGING RING.2']].map(x=>String(x||'').trim()).filter(x=>x&&x!=='0'),judgeCheckedIn:false,uploadedAt:firebase.firestore.FieldValue.serverTimestamp()}}).filter(j=>j.first||j.last||j.ata)}
 async function commitInChunks(actions){
   let batch=db.batch(), count=0;
@@ -405,7 +405,7 @@ function renderAdmin(){
 async function undoComp(id){if(!needAdmin())return;await ref().collection('competitors').doc(id).set({compCheckedIn:false,pinReceived:false},{merge:true})}
 async function undoPin(id){if(!needAdmin())return;await ref().collection('competitors').doc(id).set({pinReceived:false},{merge:true})}
 async function resetCheckins(){if(!needAdmin()||!confirm('Reset all check-ins?'))return;let batch=db.batch();comps.forEach(c=>batch.set(ref().collection('competitors').doc(c.id),{compCheckedIn:false,pinReceived:false},{merge:true}));judges.forEach(j=>batch.set(ref().collection('judges').doc(j.id),{judgeCheckedIn:false},{merge:true}));await batch.commit()}
-function exportStatus(){let rows=comps.map(c=>({'First Name':c.first,'Last Name':c.last,ATA:c.ata,Division:c.div,'Fri Ring':c.friRing,'Sat Ring':c.satRing,Events:(c.events||[]).join(', '),'Checked In':c.compCheckedIn?'Yes':'No','Pin Received':c.pinReceived?'Yes':'No'}));let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Check-In Status');XLSX.writeFile(wb,'districts_checkin_status.xlsx')}
+function exportStatus(){let rows=comps.map(c=>({'First Name':c.first,'Last Name':c.last,ATA:c.ata,Division:c.div,'Fri Round':c.friRound,'Fri Ring':c.friRing,'Sat Round':c.satRound,'Sat Ring':c.satRing,Events:(c.events||[]).join(', '),'Checked In':c.compCheckedIn?'Yes':'No','Pin Received':c.pinReceived?'Yes':'No'}));let ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Check-In Status');XLSX.writeFile(wb,'districts_checkin_status.xlsx')}
 init();
 </script>
 </body>
